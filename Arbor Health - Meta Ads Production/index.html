@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arbor Health — Social Media Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green:       #2d7a5c;
+      --green-light: #e6f4ee;
+      --green-mid:   #4aaa82;
+      --amber:       #e07b39;
+      --amber-light: #fdf0e6;
+      --red:         #c94040;
+      --red-light:   #fdeaea;
+      --blue:        #2e6da4;
+      --blue-light:  #e8f0f8;
+      --gray-50:     #f9fafb;
+      --gray-100:    #f2f4f7;
+      --gray-200:    #e4e7ec;
+      --gray-400:    #9ba3ae;
+      --gray-600:    #5a6476;
+      --gray-800:    #1e2430;
+      --white:       #ffffff;
+      --radius:      10px;
+      --shadow:      0 2px 12px rgba(0,0,0,0.07);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--gray-100);
+      color: var(--gray-800);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--green);
+      color: var(--white);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    header span { font-size: 13px; opacity: 0.8; }
+    .header-right { display: flex; gap: 10px; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 6px; font-size: 13px;
+      font-weight: 600; cursor: pointer; border: none; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-outline {
+      background: rgba(255,255,255,0.15);
+      color: var(--white);
+      border: 1px solid rgba(255,255,255,0.35);
+    }
+    .btn-white { background: var(--white); color: var(--green); }
+    .btn-green { background: var(--green); color: var(--white); }
+    .btn-amber { background: var(--amber); color: var(--white); }
+
+    /* ── Layout ── */
+    main { max-width: 1200px; margin: 0 auto; padding: 28px 24px 60px; }
+    .section { margin-bottom: 32px; }
+    .section-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.6px; color: var(--gray-600);
+      margin-bottom: 14px; padding-bottom: 8px;
+      border-bottom: 2px solid var(--gray-200);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    /* ── KPI Cards ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .kpi-card {
+      background: var(--white); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow);
+      border-top: 3px solid var(--gray-200);
+    }
+    .kpi-card.green  { border-color: var(--green); }
+    .kpi-card.amber  { border-color: var(--amber); }
+    .kpi-card.blue   { border-color: var(--blue); }
+    .kpi-card.red    { border-color: var(--red); }
+    .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-400); margin-bottom: 6px; }
+    .kpi-value { font-size: 28px; font-weight: 800; line-height: 1; color: var(--gray-800); }
+    .kpi-sub   { font-size: 12px; color: var(--gray-400); margin-top: 5px; }
+    .kpi-badge {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 2px 7px; border-radius: 20px; margin-top: 6px;
+    }
+    .badge-up   { background: var(--green-light); color: var(--green); }
+    .badge-down { background: var(--red-light);   color: var(--red); }
+    .badge-flat { background: var(--gray-100);    color: var(--gray-600); }
+
+    /* ── Charts Grid ── */
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--white); border-radius: var(--radius);
+      padding: 20px 22px; box-shadow: var(--shadow);
+    }
+    .chart-title { font-size: 13px; font-weight: 700; color: var(--gray-600); margin-bottom: 14px; }
+    .chart-wrap  { position: relative; height: 200px; }
+
+    /* ── Entry Form ── */
+    .card {
+      background: var(--white); border-radius: var(--radius);
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .card-header {
+      background: var(--gray-50); padding: 14px 20px;
+      border-bottom: 1px solid var(--gray-200);
+      font-size: 13px; font-weight: 700; color: var(--gray-800);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-body { padding: 20px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray-600); margin-bottom: 5px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--gray-200);
+      border-radius: 6px; font-size: 14px; color: var(--gray-800);
+      background: var(--white); transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-light);
+    }
+    .form-section-label {
+      grid-column: 1 / -1; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--gray-400); border-bottom: 1px solid var(--gray-200);
+      padding-bottom: 6px; margin-top: 6px;
+    }
+    .form-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+    .calc-note { font-size: 11px; color: var(--gray-400); font-style: italic; margin-top: 2px; }
+
+    /* ── Data Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      background: var(--gray-50); text-align: left;
+      padding: 10px 12px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray-600);
+      border-bottom: 2px solid var(--gray-200); white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--gray-100); transition: background 0.1s; }
+    tbody tr:hover { background: var(--gray-50); }
+    tbody td { padding: 10px 12px; color: var(--gray-800); white-space: nowrap; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.good { color: var(--green); font-weight: 700; }
+    td.warn { color: var(--amber); font-weight: 700; }
+    td.bad  { color: var(--red);   font-weight: 700; }
+    .delete-btn {
+      background: none; border: none; color: var(--gray-400);
+      cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px;
+    }
+    .delete-btn:hover { background: var(--red-light); color: var(--red); }
+
+    /* ── Benchmark Banner ── */
+    .benchmark-bar {
+      background: var(--amber-light); border: 1px solid #f0c070;
+      border-radius: var(--radius); padding: 12px 18px;
+      font-size: 13px; color: #7a4c10; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .benchmark-bar strong { font-weight: 700; }
+
+    /* ── Tab Nav ── */
+    .tabs { display: flex; gap: 4px; margin-bottom: 18px; }
+    .tab {
+      padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; background: var(--white);
+      color: var(--gray-600); box-shadow: var(--shadow);
+      transition: all 0.15s;
+    }
+    .tab.active { background: var(--green); color: var(--white); }
+    .tab:hover:not(.active) { background: var(--green-light); color: var(--green); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center; padding: 40px 20px; color: var(--gray-400);
+    }
+    .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── Alert ── */
+    .alert {
+      padding: 12px 16px; border-radius: 8px; font-size: 13px;
+      font-weight: 600; margin-bottom: 16px; display: none;
+    }
+    .alert.success { background: var(--green-light); color: var(--green); }
+    .alert.error   { background: var(--red-light);   color: var(--red); }
+
+    /* ── Edit Mode ── */
+    .editing-banner {
+      background: #fff8e1; border: 1px solid #ffe082;
+      border-radius: 8px; padding: 10px 16px; margin-bottom: 14px;
+      font-size: 13px; color: #7a5c00; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Arbor Health — Social Media Tracker</h1>
+    <span id="headerSub">Loading...</span>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+    <button class="btn btn-white" onclick="showTab('entry')">+ Add Week</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Alert -->
+  <div id="alertBox" class="alert"></div>
+
+  <!-- Benchmark Warning -->
+  <div class="benchmark-bar" id="benchmarkBanner">
+    <span>⚠</span>
+    <span><strong>North Star Alert:</strong> DC Booking Rate is <strong id="dcRateLive">—</strong> vs. benchmark of 5 to 15% for health practices. Conversion gap is the top priority.</span>
+  </div>
+
+  <!-- KPI Summary -->
+  <div class="section">
+    <div class="section-title">Key Performance Indicators</div>
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card green">
+        <div class="kpi-label">DC Booking Rate</div>
+        <div class="kpi-value" id="kpiDCRate">—</div>
+        <div class="kpi-sub">North star metric</div>
+        <div class="kpi-sub">Benchmark: 5 to 15%</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Total Leads</div>
+        <div class="kpi-value" id="kpiLeads">—</div>
+        <div class="kpi-sub" id="kpiLeadsSub">All time</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Avg CPL</div>
+        <div class="kpi-value" id="kpiCPL">—</div>
+        <div class="kpi-sub" id="kpiCPLSub">Cost per lead</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Total Spend</div>
+        <div class="kpi-value" id="kpiSpend">—</div>
+        <div class="kpi-sub">All time</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">DC Bookings</div>
+        <div class="kpi-value" id="kpiDC">—</div>
+        <div class="kpi-sub">Total confirmed</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">FB Followers</div>
+        <div class="kpi-value" id="kpiFBFollowers">—</div>
+        <div class="kpi-sub">Latest week</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">IG Followers</div>
+        <div class="kpi-value" id="kpiIGFollowers">—</div>
+        <div class="kpi-sub">Latest week</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('charts')" id="tab-charts">Charts</button>
+    <button class="tab" onclick="showTab('entry')" id="tab-entry">Add / Edit Entry</button>
+    <button class="tab" onclick="showTab('table')" id="tab-table">All Data</button>
+  </div>
+
+  <!-- Charts Tab -->
+  <div class="tab-panel active" id="panel-charts">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">CPL by Week ($)</div>
+        <div class="chart-wrap"><canvas id="chartCPL"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Leads and DC Bookings by Week</div>
+        <div class="chart-wrap"><canvas id="chartLeads"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Ad Spend by Week ($)</div>
+        <div class="chart-wrap"><canvas id="chartSpend"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Follower Growth (Facebook and Instagram)</div>
+        <div class="chart-wrap"><canvas id="chartFollowers"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Tab -->
+  <div class="tab-panel" id="panel-entry">
+    <div class="editing-banner" id="editingBanner">
+      Editing entry for week of <strong id="editingWeek">—</strong>.
+      <button style="margin-left:12px; background:none; border:none; color:#7a5c00; font-weight:700; cursor:pointer;" onclick="cancelEdit()">Cancel</button>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span id="formTitle">New Weekly Entry</span>
+        <span style="font-size:12px; font-weight:400; color:var(--gray-400);">All fields optional except Week</span>
+      </div>
+      <div class="card-body">
+        <form id="entryForm" onsubmit="saveEntry(event)">
+          <div class="form-grid">
+            <!-- Week -->
+            <div class="form-group" style="grid-column: span 2;">
+              <label>Week Starting</label>
+              <input type="date" id="fWeek" required>
+            </div>
+
+            <!-- Meta Ads -->
+            <div class="form-section-label">Meta Ads Performance</div>
+            <div class="form-group">
+              <label>Spend ($)</label>
+              <input type="number" id="fSpend" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label>Impressions</label>
+              <input type="number" id="fImpressions" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Reach</label>
+              <input type="number" id="fReach" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Link Clicks</label>
+              <input type="number" id="fClicks" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Leads</label>
+              <input type="number" id="fLeads" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>CPL ($) <span class="calc-note">auto if blank</span></label>
+              <input type="number" id="fCPL" min="0" step="0.01" placeholder="auto">
+            </div>
+            <div class="form-group">
+              <label>DC Bookings</label>
+              <input type="number" id="fDC" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Campaign Phase</label>
+              <select id="fPhase">
+                <option value="">Select...</option>
+                <option>Cold Traffic</option>
+                <option>Retargeting</option>
+                <option>Both Active</option>
+                <option>Testing</option>
+                <option>Paused</option>
+              </select>
+            </div>
+
+            <!-- Facebook Organic -->
+            <div class="form-section-label">Organic Facebook</div>
+            <div class="form-group">
+              <label>Followers</label>
+              <input type="number" id="fFBFollowers" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Posts Published</label>
+              <input type="number" id="fFBPosts" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Organic Reach</label>
+              <input type="number" id="fFBReach" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Engagements</label>
+              <input type="number" id="fFBEngagements" min="0" placeholder="0">
+            </div>
+
+            <!-- Instagram Organic -->
+            <div class="form-section-label">Organic Instagram</div>
+            <div class="form-group">
+              <label>Followers</label>
+              <input type="number" id="fIGFollowers" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Posts Published</label>
+              <input type="number" id="fIGPosts" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Reach</label>
+              <input type="number" id="fIGReach" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Engagements</label>
+              <input type="number" id="fIGEngagements" min="0" placeholder="0">
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label>Notes</label>
+              <input type="text" id="fNotes" placeholder="e.g. Launched new creative, retargeting paused, etc.">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" style="background:var(--gray-100); color:var(--gray-600); border-color:var(--gray-200);" onclick="clearForm()">Clear</button>
+            <button type="submit" class="btn btn-green" id="submitBtn">Save Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Tab -->
+  <div class="tab-panel" id="panel-table">
+    <div class="card">
+      <div class="card-header">
+        <span>All Weekly Entries</span>
+        <span id="entryCount" style="font-size:12px; font-weight:400; color:var(--gray-400);"></span>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+          <table id="dataTable">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th class="num">Spend</th>
+                <th class="num">Leads</th>
+                <th class="num">CPL</th>
+                <th class="num">DC Booked</th>
+                <th class="num">DC Rate</th>
+                <th class="num">FB Followers</th>
+                <th class="num">IG Followers</th>
+                <th>Phase</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="11"><div class="empty-state"><div class="icon">📊</div><p>No data yet. Add your first weekly entry.</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── Data Store ──────────────────────────────────────────────────
+const STORE_KEY = 'arborHealth_socialTracker_v1';
+let entries = [];
+let editingId = null;
+let charts = {};
+
+function load() {
+  try { entries = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch(e) { entries = []; }
+  entries.sort((a,b) => a.week.localeCompare(b.week));
+}
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(entries));
+}
+
+// ── Pre-populate seed data ──────────────────────────────────────
+function seedData() {
+  if (entries.length > 0) return;
+  const seed = [
+    {
+      id: 1,
+      week: '2026-04-27',
+      spend: 680, impressions: 41200, reach: 28500, clicks: 320, leads: 22, cpl: 30.91, dc: 0,
+      phase: 'Both Active',
+      fbFollowers: 1840, fbPosts: 3, fbReach: 1200, fbEngagements: 88,
+      igFollowers: 2310, igPosts: 4, igReach: 1800, igEngagements: 145,
+      notes: 'Week 1 of Round 2 creative test'
+    },
+    {
+      id: 2,
+      week: '2026-05-04',
+      spend: 714, impressions: 43800, reach: 30100, clicks: 348, leads: 28, cpl: 25.50, dc: 1,
+      phase: 'Both Active',
+      fbFollowers: 1855, fbPosts: 3, fbReach: 1350, fbEngagements: 102,
+      igFollowers: 2334, igPosts: 5, igReach: 2100, igEngagements: 178,
+      notes: '1 DC booked via retargeting'
+    },
+    {
+      id: 3,
+      week: '2026-05-11',
+      spend: 698, impressions: 39500, reach: 27400, clicks: 295, leads: 19, cpl: 36.74, dc: 0,
+      phase: 'Both Active',
+      fbFollowers: 1860, fbPosts: 2, fbReach: 980, fbEngagements: 74,
+      igFollowers: 2341, igPosts: 3, igReach: 1650, igEngagements: 132,
+      notes: 'Retargeting CPL trending up, creative fatigue suspected'
+    },
+    {
+      id: 4,
+      week: '2026-05-18',
+      spend: 695, impressions: 38200, reach: 26900, clicks: 278, leads: 17, cpl: 40.88, dc: 1,
+      phase: 'Both Active',
+      fbFollowers: 1863, fbPosts: 2, fbReach: 910, fbEngagements: 68,
+      igFollowers: 2348, igPosts: 3, igReach: 1580, igEngagements: 119,
+      notes: 'Social media proposal sent to Amber. Round 2 creatives still pending.'
+    }
+  ];
+  entries = seed;
+  save();
+}
+
+// ── Helpers ─────────────────────────────────────────────────────
+function fmt$(v) { return v != null && v !== '' ? '$' + Number(v).toFixed(2) : '—'; }
+function fmtN(v) { return v != null && v !== '' ? Number(v).toLocaleString() : '—'; }
+function fmtPct(v) { return v != null && v !== '' ? Number(v).toFixed(1) + '%' : '—'; }
+function pct(dc, leads) { return leads > 0 ? (dc / leads * 100) : 0; }
+function cpl(spend, leads) { return leads > 0 ? (spend / leads) : 0; }
+function getWeekLabel(w) {
+  const d = new Date(w + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function showAlert(msg, type) {
+  const el = document.getElementById('alertBox');
+  el.textContent = msg;
+  el.className = 'alert ' + type;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+
+// ── KPI Summary ─────────────────────────────────────────────────
+function updateKPIs() {
+  if (entries.length === 0) {
+    ['kpiDCRate','kpiLeads','kpiCPL','kpiSpend','kpiDC','kpiFBFollowers','kpiIGFollowers']
+      .forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('dcRateLive').textContent = '—';
+    document.getElementById('headerSub').textContent = 'No data yet';
+    return;
+  }
+
+  const totalLeads   = entries.reduce((s,e) => s + (Number(e.leads)||0), 0);
+  const totalDC      = entries.reduce((s,e) => s + (Number(e.dc)||0), 0);
+  const totalSpend   = entries.reduce((s,e) => s + (Number(e.spend)||0), 0);
+  const totalCPL     = totalLeads > 0 ? totalSpend / totalLeads : 0;
+  const dcRate       = pct(totalDC, totalLeads);
+  const latest       = entries[entries.length - 1];
+
+  document.getElementById('kpiDCRate').textContent      = fmtPct(dcRate);
+  document.getElementById('kpiLeads').textContent       = fmtN(totalLeads);
+  document.getElementById('kpiCPL').textContent         = totalCPL > 0 ? '$' + totalCPL.toFixed(2) : '—';
+  document.getElementById('kpiSpend').textContent       = '$' + totalSpend.toLocaleString('en-US', {minimumFractionDigits: 0});
+  document.getElementById('kpiDC').textContent          = fmtN(totalDC);
+  document.getElementById('kpiFBFollowers').textContent = latest.fbFollowers ? fmtN(latest.fbFollowers) : '—';
+  document.getElementById('kpiIGFollowers').textContent = latest.igFollowers ? fmtN(latest.igFollowers) : '—';
+  document.getElementById('dcRateLive').textContent     = fmtPct(dcRate);
+
+  const weeks = entries.length;
+  const firstDate = new Date(entries[0].week + 'T00:00:00');
+  const lastDate  = new Date(latest.week + 'T00:00:00');
+  document.getElementById('headerSub').textContent =
+    weeks + ' weeks tracked — ' + firstDate.toLocaleDateString('en-US',{month:'short',day:'numeric'}) +
+    ' to ' + lastDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+  document.getElementById('kpiLeadsSub').textContent = weeks + ' weeks';
+
+  // CPL trend badge
+  if (entries.length >= 2) {
+    const prevCPL = cpl(entries[entries.length-2].spend||0, entries[entries.length-2].leads||0);
+    const currCPL = cpl(latest.spend||0, latest.leads||0);
+    const cpldiv = document.getElementById('kpiCPL').parentElement;
+    let badge = cpldiv.querySelector('.kpi-badge');
+    if (!badge) { badge = document.createElement('div'); badge.className='kpi-badge'; cpldiv.appendChild(badge); }
+    if (prevCPL > 0 && currCPL > 0) {
+      const diff = ((currCPL - prevCPL) / prevCPL * 100);
+      if (diff > 5)       { badge.textContent = '↑ ' + Math.abs(diff).toFixed(0) + '% WoW'; badge.className='kpi-badge badge-down'; }
+      else if (diff < -5) { badge.textContent = '↓ ' + Math.abs(diff).toFixed(0) + '% WoW'; badge.className='kpi-badge badge-up'; }
+      else                { badge.textContent = 'Flat WoW'; badge.className='kpi-badge badge-flat'; }
+    }
+  }
+}
+
+// ── Charts ──────────────────────────────────────────────────────
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+function buildCharts() {
+  if (entries.length === 0) return;
+  destroyCharts();
+
+  const labels = entries.map(e => getWeekLabel(e.week));
+  const cpls   = entries.map(e => e.leads > 0 ? (e.spend / e.leads).toFixed(2) : null);
+  const leads  = entries.map(e => e.leads || 0);
+  const dcs    = entries.map(e => e.dc || 0);
+  const spend  = entries.map(e => e.spend || 0);
+  const fbFol  = entries.map(e => e.fbFollowers || null);
+  const igFol  = entries.map(e => e.igFollowers || null);
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+    scales: {
+      x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 } } },
+      y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+    }
+  };
+
+  charts.cpl = new Chart(document.getElementById('chartCPL'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'CPL ($)', data: cpls, borderColor: '#e07b39',
+        backgroundColor: 'rgba(224,123,57,0.08)', tension: 0.3, pointRadius: 5,
+        fill: true, borderWidth: 2
+      }]
+    },
+    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, ticks: { callback: v => '$' + v } } } }
+  });
+
+  charts.leads = new Chart(document.getElementById('chartLeads'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Leads', data: leads, backgroundColor: 'rgba(46,109,164,0.75)', borderRadius: 4 },
+        { label: 'DC Booked', data: dcs, backgroundColor: 'rgba(45,122,92,0.85)', borderRadius: 4 }
+      ]
+    },
+    options: baseOpts
+  });
+
+  charts.spend = new Chart(document.getElementById('chartSpend'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Ad Spend ($)', data: spend, backgroundColor: 'rgba(74,170,130,0.75)', borderRadius: 4 }]
+    },
+    options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, ticks: { callback: v => '$' + v } } } }
+  });
+
+  charts.followers = new Chart(document.getElementById('chartFollowers'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Facebook', data: fbFol, borderColor: '#1877f2', backgroundColor: 'rgba(24,119,242,0.07)', tension: 0.3, pointRadius: 4, fill: true, borderWidth: 2 },
+        { label: 'Instagram', data: igFol, borderColor: '#c13584', backgroundColor: 'rgba(193,53,132,0.07)', tension: 0.3, pointRadius: 4, fill: true, borderWidth: 2 }
+      ]
+    },
+    options: baseOpts
+  });
+}
+
+// ── Table ────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  document.getElementById('entryCount').textContent = entries.length + ' entries';
+
+  if (entries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="icon">📊</div><p>No data yet. Add your first weekly entry.</p></div></td></tr>';
+    return;
+  }
+
+  const rows = [...entries].reverse().map(e => {
+    const rate = pct(e.dc||0, e.leads||0);
+    const rateClass = rate === 0 ? 'bad' : rate < 3 ? 'warn' : 'good';
+    const calcCPL = e.leads > 0 ? (e.spend / e.leads) : null;
+    const finalCPL = e.cpl || calcCPL;
+    const cplClass = !finalCPL ? '' : finalCPL > 40 ? 'bad' : finalCPL > 25 ? 'warn' : 'good';
+
+    return `<tr>
+      <td><strong>${getWeekLabel(e.week)}, ${new Date(e.week+'T00:00:00').getFullYear()}</strong></td>
+      <td class="num">${e.spend ? fmt$(e.spend) : '—'}</td>
+      <td class="num">${fmtN(e.leads)}</td>
+      <td class="num ${cplClass}">${finalCPL ? '$' + finalCPL.toFixed(2) : '—'}</td>
+      <td class="num">${fmtN(e.dc)}</td>
+      <td class="num ${rateClass}">${rate > 0 ? fmtPct(rate) : '0.0%'}</td>
+      <td class="num">${fmtN(e.fbFollowers)}</td>
+      <td class="num">${fmtN(e.igFollowers)}</td>
+      <td>${e.phase || '—'}</td>
+      <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; color:var(--gray-600);">${e.notes || ''}</td>
+      <td>
+        <button class="delete-btn" onclick="editEntry(${e.id})" title="Edit">✏️</button>
+        <button class="delete-btn" onclick="deleteEntry(${e.id})" title="Delete">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = rows;
+}
+
+// ── Entry Form ───────────────────────────────────────────────────
+function saveEntry(evt) {
+  evt.preventDefault();
+  const week = document.getElementById('fWeek').value;
+  if (!week) return;
+
+  const spend  = parseFloat(document.getElementById('fSpend').value) || 0;
+  const leads  = parseInt(document.getElementById('fLeads').value) || 0;
+  const cplVal = parseFloat(document.getElementById('fCPL').value) || (leads > 0 ? spend / leads : 0);
+  const dc     = parseInt(document.getElementById('fDC').value) || 0;
+
+  const entry = {
+    id:        editingId || Date.now(),
+    week,
+    spend,
+    impressions: parseInt(document.getElementById('fImpressions').value) || 0,
+    reach:       parseInt(document.getElementById('fReach').value) || 0,
+    clicks:      parseInt(document.getElementById('fClicks').value) || 0,
+    leads,
+    cpl:    cplVal,
+    dc,
+    phase:  document.getElementById('fPhase').value,
+    fbFollowers:  parseInt(document.getElementById('fFBFollowers').value) || 0,
+    fbPosts:      parseInt(document.getElementById('fFBPosts').value) || 0,
+    fbReach:      parseInt(document.getElementById('fFBReach').value) || 0,
+    fbEngagements:parseInt(document.getElementById('fFBEngagements').value) || 0,
+    igFollowers:  parseInt(document.getElementById('fIGFollowers').value) || 0,
+    igPosts:      parseInt(document.getElementById('fIGPosts').value) || 0,
+    igReach:      parseInt(document.getElementById('fIGReach').value) || 0,
+    igEngagements:parseInt(document.getElementById('fIGEngagements').value) || 0,
+    notes:  document.getElementById('fNotes').value.trim()
+  };
+
+  if (editingId) {
+    const idx = entries.findIndex(e => e.id === editingId);
+    if (idx !== -1) entries[idx] = entry;
+    showAlert('Entry updated for week of ' + getWeekLabel(week), 'success');
+    cancelEdit();
+  } else {
+    const existing = entries.findIndex(e => e.week === week);
+    if (existing !== -1) {
+      if (!confirm('An entry already exists for the week of ' + getWeekLabel(week) + '. Overwrite it?')) return;
+      entries[existing] = entry;
+    } else {
+      entries.push(entry);
+    }
+    showAlert('Entry saved for week of ' + getWeekLabel(week), 'success');
+  }
+
+  entries.sort((a,b) => a.week.localeCompare(b.week));
+  save();
+  clearForm();
+  refreshAll();
+  showTab('charts');
+}
+
+function editEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  document.getElementById('fWeek').value          = e.week;
+  document.getElementById('fSpend').value         = e.spend || '';
+  document.getElementById('fImpressions').value   = e.impressions || '';
+  document.getElementById('fReach').value         = e.reach || '';
+  document.getElementById('fClicks').value        = e.clicks || '';
+  document.getElementById('fLeads').value         = e.leads || '';
+  document.getElementById('fCPL').value           = e.cpl || '';
+  document.getElementById('fDC').value            = e.dc || '';
+  document.getElementById('fPhase').value         = e.phase || '';
+  document.getElementById('fFBFollowers').value   = e.fbFollowers || '';
+  document.getElementById('fFBPosts').value       = e.fbPosts || '';
+  document.getElementById('fFBReach').value       = e.fbReach || '';
+  document.getElementById('fFBEngagements').value = e.fbEngagements || '';
+  document.getElementById('fIGFollowers').value   = e.igFollowers || '';
+  document.getElementById('fIGPosts').value       = e.igPosts || '';
+  document.getElementById('fIGReach').value       = e.igReach || '';
+  document.getElementById('fIGEngagements').value = e.igEngagements || '';
+  document.getElementById('fNotes').value         = e.notes || '';
+
+  document.getElementById('editingBanner').style.display = 'block';
+  document.getElementById('editingWeek').textContent = getWeekLabel(e.week);
+  document.getElementById('formTitle').textContent = 'Edit Entry';
+  document.getElementById('submitBtn').textContent = 'Update Entry';
+  showTab('entry');
+  window.scrollTo({top: 0, behavior:'smooth'});
+}
+
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('editingBanner').style.display = 'none';
+  document.getElementById('formTitle').textContent = 'New Weekly Entry';
+  document.getElementById('submitBtn').textContent = 'Save Entry';
+  clearForm();
+}
+
+function deleteEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  if (!confirm('Delete entry for week of ' + getWeekLabel(e.week) + '?')) return;
+  entries = entries.filter(x => x.id !== id);
+  save();
+  refreshAll();
+  showAlert('Entry deleted', 'error');
+}
+
+function clearForm() {
+  document.getElementById('entryForm').reset();
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1);
+  document.getElementById('fWeek').value = monday.toISOString().split('T')[0];
+}
+
+// ── Export CSV ───────────────────────────────────────────────────
+function exportCSV() {
+  if (entries.length === 0) { showAlert('No data to export', 'error'); return; }
+  const headers = ['Week','Spend','Impressions','Reach','Clicks','Leads','CPL','DC Bookings','DC Rate %','Phase','FB Followers','FB Posts','FB Reach','FB Engagements','IG Followers','IG Posts','IG Reach','IG Engagements','Notes'];
+  const rows = entries.map(e => {
+    const rate = pct(e.dc||0, e.leads||0);
+    const calcCPL = e.leads > 0 ? (e.spend / e.leads).toFixed(2) : '';
+    return [
+      e.week, e.spend||0, e.impressions||0, e.reach||0, e.clicks||0,
+      e.leads||0, e.cpl || calcCPL, e.dc||0, rate.toFixed(2),
+      e.phase||'', e.fbFollowers||0, e.fbPosts||0, e.fbReach||0, e.fbEngagements||0,
+      e.igFollowers||0, e.igPosts||0, e.igReach||0, e.igEngagements||0,
+      '"' + (e.notes||'').replace(/"/g,'""') + '"'
+    ].join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'arbor_health_social_tracker.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────
+function showTab(name) {
+  ['charts','entry','table'].forEach(t => {
+    document.getElementById('panel-'+t).classList.toggle('active', t === name);
+    document.getElementById('tab-'+t).classList.toggle('active', t === name);
+  });
+  if (name === 'charts') buildCharts();
+}
+
+// ── Refresh All ──────────────────────────────────────────────────
+function refreshAll() {
+  updateKPIs();
+  renderTable();
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+load();
+seedData();
+refreshAll();
+clearForm();
+buildCharts();
+</script>
+</body>
+</html>
